@@ -1,6 +1,4 @@
-# Jobe-in-a-box: a Dockerised Jobe server (see https://github.com/trampgeek/jobe)
-# With thanks to David Bowes (d.h.bowes@lancaster.ac.uk) who did all the hard work
-# on this originally.
+# Jobe-in-a-box: a Dockerized Jobe server with PostgreSQL
 
 FROM docker.io/ubuntu:24.04
 
@@ -21,21 +19,17 @@ ENV APACHE_LOCK_DIR=/var/lock/apache2
 ENV APACHE_PID_FILE=/var/run/apache2.pid
 ENV LANG=C.UTF-8
 
+# PostgreSQL environment variables
+ENV POSTGRES_DB=jobe_db
+ENV POSTGRES_USER=jobe_user
+ENV POSTGRES_PASSWORD=jobe_password
+
 # Copy apache virtual host file for later use
 COPY 000-jobe.conf /
 # Copy test script
 COPY container-test.sh /
 
-# Mount secrets
-# Set timezone
-# Install extra packages
-# Redirect apache logs to stdout
-# Configure apache
-# Configure php
-# Get jobe
-# Handle jobe API keys
-# Install jobe
-# Clean up
+# Install required packages and Jobe environment
 RUN --mount=type=secret,id=api_keys \
     export API_KEYS=`cat /run/secrets/api_keys | tr '\n' ' '` && \
     ln -snf /usr/share/zoneinfo/"$TZ" /etc/localtime && \
@@ -61,6 +55,8 @@ RUN --mount=type=secret,id=api_keys \
         python3-setuptools \
         pylint \
         sqlite3 \
+        postgresql \
+        postgresql-client \
         sudo \
         tzdata \
         unzip && \
@@ -89,15 +85,22 @@ RUN --mount=type=secret,id=api_keys \
     apt-get -y clean && \
     rm -rf /var/lib/apt/lists/*
 
+# Configure PostgreSQL
+RUN service postgresql start && \
+    su - postgres -c "psql -c \"CREATE USER ${POSTGRES_USER} WITH PASSWORD '${POSTGRES_PASSWORD}';\"" && \
+    su - postgres -c "psql -c \"CREATE DATABASE ${POSTGRES_DB} OWNER ${POSTGRES_USER};\"" && \
+    su - postgres -c "psql -c \"GRANT ALL PRIVILEGES ON DATABASE ${POSTGRES_DB} TO ${POSTGRES_USER};\"" && \
+    su - postgres -c "psql -d ${POSTGRES_DB} -c \"CREATE TABLE IF NOT EXISTS employees (id SERIAL PRIMARY KEY, name VARCHAR(100), salary INTEGER);\"" && \
+    su - postgres -c "psql -d ${POSTGRES_DB} -c \"INSERT INTO employees (name, salary) VALUES ('John Doe', 3500), ('Jane Smith', 5000), ('Alice Johnson', 2500), ('Bob Brown', 4000), ('Charlie White', 6000);\"" && \
+    su - postgres -c "psql -d ${POSTGRES_DB} -c \"GRANT ALL PRIVILEGES ON TABLE employees TO ${POSTGRES_USER};\"" && \
+    service postgresql stop
+
 # Expose apache
 EXPOSE 80
 
 # Healthcheck every minute, minimaltest.py should complete within 2 seconds
-# If you're running docker version 25.0 or later, you could consider
-# changing the following line to
-# HEALTHCHECK --start-period=30s --start-interval=5s --interval=5m --timeout=2s \
 HEALTHCHECK --interval=1m --timeout=2s \
     CMD /usr/bin/python3 /var/www/html/jobe/minimaltest.py || exit 1
 
-# Start apache
-CMD ["/usr/sbin/apache2ctl", "-D", "FOREGROUND"]
+# Start apache and PostgreSQL
+CMD service postgresql start && /usr/sbin/apache2ctl -D FOREGROUND
