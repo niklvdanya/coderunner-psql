@@ -56,8 +56,10 @@ class qtype_coderunner_near_equality_grader extends qtype_coderunner_grader {
     // to lower case.
     private function reduce(&$output) {
         $reduced = preg_replace("/\n\n+/", "\n", $output);
-        $reduced2 = preg_replace("/^\n/", '', $reduced);  // Delete blank first line.
+        $reduced2 = preg_replace("/^\n/", '', $reduced);  
         $reduced3 = preg_replace('/[ \t][ \t]+/', ' ', $reduced2);
-        return strtolower($reduced3);
+        $lines = explode("\n", strtolower($reduced3));  
+        sort($lines);  
+        return implode("\n", $lines);
     }
 }

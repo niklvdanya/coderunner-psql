@@ -40,12 +40,31 @@ class qtype_coderunner_equality_grader extends qtype_coderunner_grader {
      *  Should not be called if the execution failed (syntax error, exception
      *  etc).
      */
+    private function sort_lines_and_columns($text) {
+        $lines = explode("\n", trim($text));  
+        $sorted_lines = [];
+    
+        foreach ($lines as $line) {
+            $columns = preg_split('/\s+/', trim($line)); 
+            sort($columns); 
+            $sorted_lines[] = implode(" ", $columns); 
+        }
+    
+        sort($sorted_lines); 
+        return implode("\n", $sorted_lines);
+    }
+    
+    
     public function grade_known_good(&$output, &$testcase) {
         $cleanedoutput = qtype_coderunner_util::clean($output);
         $cleanedexpected = qtype_coderunner_util::clean($testcase->expected);
-        $iscorrect = $cleanedoutput == $cleanedexpected;
+    
+        $sortedoutput = $this->sort_lines_and_columns($cleanedoutput);
+        $sortedexpected = $this->sort_lines_and_columns($cleanedexpected);
+    
+        $iscorrect = $sortedoutput == $sortedexpected;
         $awardedmark = $iscorrect ? $testcase->mark : 0.0;
-
+    
         return new qtype_coderunner_test_result($testcase, $iscorrect, $awardedmark, $cleanedoutput);
     }
 }
