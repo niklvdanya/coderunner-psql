@@ -1230,47 +1230,82 @@ print(SEPARATOR)
     <globalextra></globalextra>
     <useace>1</useace>
     <resultcolumns></resultcolumns>
-    <template><![CDATA[import subprocess, os, shutil
+    <template><![CDATA[import subprocess
+import os
 
-# Use Twig to get students answer and the columnwidth template parameter
 student_answer = """{{ STUDENT_ANSWER | e('py') }}""".rstrip()
 column_widths = []
 {% for width in QUESTION.parameters.columnwidths %}
 column_widths.append({{width}})
 {% endfor %}
 
-if not student_answer.endswith(';'):
-    student_answer = student_answer + ';'
-db_files = [fname for fname in os.listdir() if fname.endswith('.db')]
-if len(db_files) == 0:
-    raise Exception("No DB files found!")
-elif len(db_files) == 1:
-    db_working = db_files[0][:-3]  # Strip .db extension
-else:
-    raise Exception("Multiple DB files not implemented yet, sorry!")
+# Конфигурация PostgreSQL
+DB_CONFIG = {
+    'host': '127.0.0.1',  # Используем TCP/IP вместо 'localhost'
+    'port': '5432',
+    'dbname': 'jobe_db',  # Название базы данных из Dockerfile
+    'user': 'jobe_user',  # Имя пользователя из Dockerfile
+    'password': 'jobe_password'  # Пароль из Dockerfile
+}
 
-SEPARATOR = "#<ab@17943918#@>#"
-controls = [".mode column", ".headers on"]
-if column_widths: # Add column width specifiers if given
-    controls.append(".width " + ' '.join(str(width) for width in column_widths))
+# Формирование аргументов подключения
+psql_cmd = [
+    'psql',
+    '--no-psqlrc',
+    '-q',
+    '-h', DB_CONFIG['host'],
+    '-p', DB_CONFIG['port'],
+    '-d', DB_CONFIG['dbname'],
+    '-U', DB_CONFIG['user'],
+    '-v', 'ON_ERROR_STOP=1'
+]
+
+# Настройки формата вывода
+controls = [
+    "\\set QUIET 1",
+    "\\pset format aligned",
+    "\\pset border 2",
+    "\\pset tuples_only off"
+]
+
+if column_widths:
+    controls.append(f"\\pset columns {sum(column_widths)}")
+
 prelude = '\n'.join(controls) + '\n'
 
+SEPARATOR = "#<ab@17943918#@>#"
+
 {% for TEST in TESTCASES %}
-shutil.copyfile(db_files[0], db_working)  # Copy clean writeable db file
 testcode = """{{ TEST.testcode | e('py') }}"""
 extra = """{{ TEST.extra | e('py') }}"""
-code_to_run = '\n'.join([prelude, extra, student_answer, testcode])
-with open('commands', 'w') as sqlite_commands:
-    sqlite_commands.write(code_to_run)
 
-with open('commands') as cmd_input:
-    text_input = cmd_input.read()
-    try:
-        output = subprocess.check_output(['sqlite3', db_working], input=text_input,
-                 universal_newlines=True)
-        print(output)
-    except Exception as e:
-        raise Exception("sqlite3 error: " + str(e))
+# Формирование SQL-скрипта с транзакцией
+full_script = '\n'.join([
+    prelude,
+    "BEGIN;",
+    "SAVEPOINT initial_state;",
+    extra,
+    student_answer,
+    testcode,
+    "ROLLBACK TO SAVEPOINT initial_state;",
+    "COMMIT;"
+])
+
+try:
+    # Выполнение скрипта с перенаправлением STDERR
+    env = os.environ.copy()
+    env['PGPASSWORD'] = DB_CONFIG['password']  # Устанавливаем пароль через переменную окружения
+    
+    output = subprocess.check_output(
+        psql_cmd,
+        input=full_script,
+        universal_newlines=True,
+        stderr=subprocess.STDOUT,
+        env=env
+    )
+    print(output.strip())
+except subprocess.CalledProcessError as e:
+    print(f"ERROR: {e.output.splitlines()[-1]}")
 
 {% if not loop.last %}
 print(SEPARATOR)

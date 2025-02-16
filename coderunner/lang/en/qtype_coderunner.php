@@ -869,23 +869,9 @@ If this is likely to prove a problem, the easiest work-around is to define
 one of the test case standard input fields to be a non-empty value - this
 forces CodeRunner into a fallback mode of running each test case separately.</p>';
 
-$string['qtype_sql'] = '<p>A SQL question type, using sqlite3,
- run from Python3. sqlite3 must be installed on the Jobe server for this question
- type.</p>
- <p>The working directory is searched for files with an extension \'.db\'. If
- there is only one such file, it is used as the sqlite3 database for all tests.
- Multiple .db files currently issues an error message; a possible extension is
- to use different db files for each test, e.g. in sorted order.</p>
- <p>For each test, an sqlite3 command script of the form</p>
- <pre>.mode column<br>.headers on<br>&lt;code in extra&gt;<br>&lt;student answer&gt;<br>&lt;testcode&gt;</pre>
- <p>is run.</p>
- <p>A fresh copy of the db file is used for each test case.&nbsp;</p>
- <p>A template parameter <i>columnwidths</i>&nbsp;can be used to set the report
- column widths. By default sqlite3 sets each column width to be the maximum of
- three numbers: 10, the width of the header, and the width of the first row of data.
- A template string like</p><pre><code>{"columnwidths": [10, 50, 10, 5]}
-</code></pre>
-<p>will instead use column widths of 10, 50, 10 and 5 for the first four columns.</p>';
+$string['qtype_sql'] = '<p>A SQL question type, using PostgreSQL,
+ run from Python3. PostgreSQL must be installed on the Jobe server for this question
+ type.</p>';
 
 $string['qtypehelp'] = 'Help with q-type';
 $string['questioncheckboxes'] = 'Customisation';
