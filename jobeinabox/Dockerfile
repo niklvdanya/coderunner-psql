@@ -31,7 +31,7 @@ COPY container-test.sh /
 
 # Install required packages and Jobe environment
 RUN --mount=type=secret,id=api_keys \
-    export API_KEYS=`cat /run/secrets/api_keys | tr '\n' ' '` && \
+    export API_KEYS=cat /run/secrets/api_keys | tr '\n' ' ' && \
     ln -snf /usr/share/zoneinfo/"$TZ" /etc/localtime && \
     echo "$TZ" > /etc/timezone && \
     apt-get update && \
@@ -86,14 +86,16 @@ RUN --mount=type=secret,id=api_keys \
     rm -rf /var/lib/apt/lists/*
 
 # Configure PostgreSQL
+COPY init.sql /docker-entrypoint-initdb.d/
 RUN service postgresql start && \
     su - postgres -c "psql -c \"CREATE USER ${POSTGRES_USER} WITH PASSWORD '${POSTGRES_PASSWORD}';\"" && \
     su - postgres -c "psql -c \"CREATE DATABASE ${POSTGRES_DB} OWNER ${POSTGRES_USER};\"" && \
     su - postgres -c "psql -c \"GRANT ALL PRIVILEGES ON DATABASE ${POSTGRES_DB} TO ${POSTGRES_USER};\"" && \
-    su - postgres -c "psql -d ${POSTGRES_DB} -c \"CREATE TABLE IF NOT EXISTS employees (id SERIAL PRIMARY KEY, name VARCHAR(100), salary INTEGER);\"" && \
-    su - postgres -c "psql -d ${POSTGRES_DB} -c \"INSERT INTO employees (name, salary) VALUES ('John Doe', 3500), ('Jane Smith', 5000), ('Alice Johnson', 2500), ('Bob Brown', 4000), ('Charlie White', 6000);\"" && \
-    su - postgres -c "psql -d ${POSTGRES_DB} -c \"GRANT ALL PRIVILEGES ON TABLE employees TO ${POSTGRES_USER};\"" && \
+    service postgresql stop && \
+    service postgresql start && \
+    su - postgres -c "psql -d ${POSTGRES_DB} -f /docker-entrypoint-initdb.d/init.sql" && \
     service postgresql stop
+
 
 # Expose apache
 EXPOSE 80
