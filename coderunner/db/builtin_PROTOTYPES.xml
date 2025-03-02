@@ -1239,16 +1239,14 @@ column_widths = []
 column_widths.append({{width}})
 {% endfor %}
 
-# Конфигурация PostgreSQL
 DB_CONFIG = {
-    'host': '127.0.0.1',  # Используем TCP/IP вместо 'localhost'
+    'host': '127.0.0.1',  
     'port': '5432',
-    'dbname': 'jobe_db',  # Название базы данных из Dockerfile
-    'user': 'jobe_user',  # Имя пользователя из Dockerfile
-    'password': 'jobe_password'  # Пароль из Dockerfile
+    'dbname': 'jobe_db',  
+    'user': 'jobe_user',  
+    'password': 'jobe_password'  
 }
 
-# Формирование аргументов подключения
 psql_cmd = [
     'psql',
     '--no-psqlrc',
@@ -1260,7 +1258,6 @@ psql_cmd = [
     '-v', 'ON_ERROR_STOP=1'
 ]
 
-# Настройки формата вывода
 controls = [
     "\\set QUIET 1",
     "\\pset format aligned",
@@ -1279,7 +1276,6 @@ SEPARATOR = "#<ab@17943918#@>#"
 testcode = """{{ TEST.testcode | e('py') }}"""
 extra = """{{ TEST.extra | e('py') }}"""
 
-# Формирование SQL-скрипта с транзакцией
 full_script = '\n'.join([
     prelude,
     "BEGIN;",
@@ -1292,9 +1288,8 @@ full_script = '\n'.join([
 ])
 
 try:
-    # Выполнение скрипта с перенаправлением STDERR
     env = os.environ.copy()
-    env['PGPASSWORD'] = DB_CONFIG['password']  # Устанавливаем пароль через переменную окружения
+    env['PGPASSWORD'] = DB_CONFIG['password']  
     
     output = subprocess.check_output(
         psql_cmd,
