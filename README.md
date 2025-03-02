@@ -30,6 +30,7 @@ Before you begin, ensure you have the following:
 
     ```bash
     sudo docker run -d -p 4000:80 --name jobe my/jobeinabox
+    ```
 
     This will start the Jobe server on port 4000.
 
@@ -39,6 +40,7 @@ Before you begin, ensure you have the following:
 
     ```bash
     cp -r coderunner /path/to/moodle/question/type
+    ```
 
     Typically, the path is:
 
